@@ -1,0 +1,553 @@
+openapi: 3.0.0
+info:
+  title: User Authentication & Visit Management API
+  description: API documentation for user authentication and visit management system
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+
+tags:
+  - name: Users
+    description: User authentication and registration endpoints
+  - name: Visits
+    description: Visit management endpoints
+  - name: Doctors
+    description: Doctor management endpoints
+  - name: Appointments
+    description: Appointment management endpoints
+
+paths:
+  /api/users/register:
+    post:
+      tags:
+        - Users
+      summary: Register a new user
+      description: Creates a new user account with username, phone, and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - phone
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 5
+                  maxLength: 30
+                  example: "rashidi"
+                  description: Username must be between 5 and 30 characters
+                phone:
+                  type: string
+                  pattern: "^(00966|966|\\+966|0)([0-9]{9})$"
+                  example: "0501234567"
+                  description: Saudi phone number format
+                password:
+                  type: string
+                  minLength: 6
+                  example: "password123"
+                  description: Password must be at least 6 characters
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error or user already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/login:
+    post:
+      tags:
+        - Users
+      summary: Login user
+      description: Authenticate user and receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: "rashidi"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/visits:
+    post:
+      tags:
+        - Visits
+      summary: Create a new visit
+      description: Creates a new visit request. Requires authentication.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitRequest'
+      responses:
+        '201':
+          description: Visit successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/visits/mine:
+    get:
+      tags:
+        - Visits
+      summary: Get user's visits
+      description: Retrieves all visits for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user's visits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Visit'
+        '400':
+          description: Error retrieving visits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/doctors:
+    post:
+      tags:
+        - Doctors
+      summary: Create a new doctor
+      description: Creates a new doctor profile with name, specialization, address, and availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+      responses:
+        '201':
+          description: Doctor successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Doctor'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - Doctors
+      summary: Get all doctors
+      description: Retrieves a list of all available doctors
+      responses:
+        '200':
+          description: List of all doctors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Doctor'
+
+  /api/appointments:
+    post:
+      tags:
+        - Appointments
+      summary: Create a new appointment
+      description: Creates a new appointment with a doctor. Requires authentication and checks doctor availability.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentRequest'
+      responses:
+        '201':
+          description: Appointment successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Validation error, doctor not available, or appointment already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/appointments/mine:
+    get:
+      tags:
+        - Appointments
+      summary: Get user's appointments
+      description: Retrieves all appointments for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user's appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        username:
+          type: string
+          example: "rashidi"
+        phone:
+          type: string
+          example: "0501234567"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VisitRequest:
+      type: object
+      required:
+        - type
+        - reason
+        - symptomsDate
+        - specialCondition
+        - serviceType
+        - interval
+        - patientType
+        - date
+        - address
+        - location
+        - notes
+      properties:
+        type:
+          type: string
+          enum: [DOCTOR, NURSE]
+          example: "DOCTOR"
+          description: Type of visit
+        reason:
+          type: string
+          example: "High fever and headache"
+          description: Reason for the visit
+        symptomsDate:
+          type: string
+          enum: [LESS_ONE_DAY, DAY_TO_THREE_DAYS, FOUR_TO_SEVEN_DAYS, MORE_THAN_SEVEN_DAYS]
+          example: "LESS_ONE_DAY"
+          description: When symptoms started
+        specialCondition:
+          type: string
+          enum: [CHRONIC, RECENT_SURGERY_OR_DISCHARGED, MEDICATION_ADHERENCE, OTHER]
+          example: "CHRONIC"
+          description: Special medical condition
+        serviceType:
+          type: string
+          enum: [MEDICATIONS, PHYSICAL_TREATMENT, IV_OR_CATHETER, VITALS_CHECKUP, OTHER]
+          example: "MEDICATIONS"
+          description: Type of service needed
+        interval:
+          type: string
+          enum: [ONCE, COUPLE_OF_TIMES, WEEKLY, NOT_SURE]
+          example: "ONCE"
+          description: Visit frequency
+        patientType:
+          type: string
+          enum: [ME, FAMILY_MEMBER, CHILD, ELDERLY]
+          example: "ME"
+          description: Type of patient
+        date:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+          description: Preferred visit date and time
+        address:
+          type: string
+          example: "123 Main Street, Riyadh"
+          description: Visit address
+        location:
+          type: object
+          required:
+            - type
+            - coordinates
+          properties:
+            type:
+              type: string
+              example: "Point"
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+              example: [24.7136, 46.6753]
+              description: "Coordinates array [longitude, latitude]"
+        notes:
+          type: string
+          example: "Patient has difficulty walking"
+          description: Additional notes
+
+    Visit:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        user:
+          type: string
+          example: "507f1f77bcf86cd799439012"
+          description: User ID reference
+        type:
+          type: string
+          enum: [DOCTOR, NURSE]
+          example: "DOCTOR"
+        reason:
+          type: string
+          example: "High fever and headache"
+        symptomsDate:
+          type: string
+          enum: [LESS_ONE_DAY, DAY_TO_THREE_DAYS, FOUR_TO_SEVEN_DAYS, MORE_THAN_SEVEN_DAYS]
+          example: "LESS_ONE_DAY"
+        specialCondition:
+          type: string
+          enum: [CHRONIC, RECENT_SURGERY_OR_DISCHARGED, MEDICATION_ADHERENCE, OTHER]
+          example: "CHRONIC"
+        serviceType:
+          type: string
+          enum: [MEDICATIONS, PHYSICAL_TREATMENT, IV_OR_CATHETER, VITALS_CHECKUP, OTHER]
+          example: "MEDICATIONS"
+        interval:
+          type: string
+          enum: [ONCE, COUPLE_OF_TIMES, WEEKLY, NOT_SURE]
+          example: "ONCE"
+        patientType:
+          type: string
+          enum: [ME, FAMILY_MEMBER, CHILD, ELDERLY]
+          example: "ME"
+        date:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        address:
+          type: string
+          example: "123 Main Street, Riyadh"
+        location:
+          type: object
+          properties:
+            type:
+              type: string
+              example: "Point"
+            coordinates:
+              type: array
+              items:
+                type: number
+              example: [24.7136, 46.6753]
+        notes:
+          type: string
+          example: "Patient has difficulty walking"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DoctorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Dr. Ahmed Naser"
+          description: Doctor's full name
+        specialization:
+          type: string
+          example: "Cardiology"
+          description: Doctor's medical specialization
+        address:
+          type: string
+          example: "123 Medical Center, Riyadh"
+          description: Doctor's clinic address
+        availableDays:
+          type: array
+          items:
+            type: string
+          example: ["Monday", "Wednesday", "Friday"]
+          description: Days when doctor is available
+        availableTimes:
+          type: array
+          items:
+            type: string
+          example: ["09:00", "10:00", "11:00", "14:00"]
+          description: Available time slots in HH:mm format
+
+    Doctor:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        name:
+          type: string
+          example: "Dr. Ahmed Naser"
+        specialization:
+          type: string
+          example: "Cardiology"
+        address:
+          type: string
+          example: "123 Medical Center, Riyadh"
+        availableDays:
+          type: array
+          items:
+            type: string
+          example: ["Monday", "Wednesday", "Friday"]
+        availableTimes:
+          type: array
+          items:
+            type: string
+          example: ["09:00", "10:00", "11:00", "14:00"]
+
+    AppointmentRequest:
+      type: object
+      required:
+        - doctor
+        - time
+      properties:
+        doctor:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+          description: Doctor ID reference
+        time:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+          description: Appointment date and time (ISO format)
+        notes:
+          type: string
+          example: "Follow-up appointment for chest pain"
+          description: Additional notes about the appointment
+
+    Appointment:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        user:
+          type: string
+          example: "507f1f77bcf86cd799439012"
+          description: User ID reference
+        doctor:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Doctor'
+          example: "507f1f77bcf86cd799439013"
+          description: Doctor ID or populated Doctor object
+        time:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        notes:
+          type: string
+          example: "Follow-up appointment for chest pain"
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED]
+          example: "PENDING"
+          description: Appointment status
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Validation error message"
